@@ -1,0 +1,869 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Marca de Agua Configurable</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Roboto, system-ui, sans-serif;
+        }
+        body {
+            background: #f0f4f8;
+            margin: 0;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .app {
+            max-width: 1400px;
+            width: 100%;
+            background: #ffffff;
+            border-radius: 32px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.12);
+            padding: 30px 35px;
+            transition: all 0.2s;
+        }
+        h1 {
+            font-weight: 600;
+            font-size: 1.8rem;
+            color: #1e293b;
+            margin-top: 0;
+            margin-bottom: 24px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        h1 small {
+            font-weight: 400;
+            font-size: 0.9rem;
+            color: #64748b;
+            margin-left: 8px;
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: 340px 1fr;
+            gap: 30px;
+        }
+        @media (max-width: 900px) {
+            .grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Panel de controles */
+        .controls {
+            background: #f8fafc;
+            border-radius: 24px;
+            padding: 22px 20px;
+            border: 1px solid #e2e8f0;
+            max-height: 780px;
+            overflow-y: auto;
+        }
+        .controls::-webkit-scrollbar {
+            width: 5px;
+        }
+        .controls::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 10px;
+        }
+
+        .control-group {
+            margin-bottom: 22px;
+        }
+        .control-group label {
+            display: block;
+            font-weight: 500;
+            font-size: 0.85rem;
+            color: #334155;
+            margin-bottom: 5px;
+        }
+        .control-group .hint {
+            font-size: 0.75rem;
+            color: #94a3b8;
+            margin-top: 2px;
+        }
+        .file-input {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        .file-input input[type="file"] {
+            flex: 1;
+            font-size: 0.8rem;
+            padding: 6px 4px;
+            border: 1px dashed #cbd5e1;
+            border-radius: 12px;
+            background: #ffffff;
+            cursor: pointer;
+        }
+        .file-input input[type="file"]:hover {
+            border-color: #94a3b8;
+        }
+
+        .range-with-value {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .range-with-value input[type="range"] {
+            flex: 1;
+            accent-color: #3b82f6;
+        }
+        .range-with-value .value {
+            min-width: 40px;
+            text-align: center;
+            font-weight: 600;
+            color: #0f172a;
+            background: #e2e8f0;
+            padding: 0 8px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            line-height: 28px;
+        }
+
+        select,
+        input[type="text"],
+        input[type="number"] {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            background: #ffffff;
+            font-size: 0.9rem;
+            transition: 0.15s;
+        }
+        select:focus,
+        input:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+        }
+
+        .radio-group {
+            display: flex;
+            gap: 16px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        .radio-group label {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-weight: 400;
+            font-size: 0.9rem;
+            color: #1e293b;
+            cursor: pointer;
+        }
+        .radio-group input[type="radio"] {
+            accent-color: #3b82f6;
+            width: 16px;
+            height: 16px;
+            margin: 0;
+        }
+
+        .btn {
+            background: #3b82f6;
+            color: #fff;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 40px;
+            font-weight: 600;
+            font-size: 0.95rem;
+            cursor: pointer;
+            transition: 0.2s;
+            width: 100%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+        .btn:hover {
+            background: #2563eb;
+            transform: scale(1.01);
+        }
+        .btn:active {
+            transform: scale(0.98);
+        }
+        .btn-secondary {
+            background: #e2e8f0;
+            color: #1e293b;
+        }
+        .btn-secondary:hover {
+            background: #cbd5e1;
+        }
+        .btn-success {
+            background: #22c55e;
+        }
+        .btn-success:hover {
+            background: #16a34a;
+        }
+
+        .flex-row {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        .flex-row .btn {
+            flex: 1;
+            min-width: 100px;
+        }
+
+        /* Previsualización */
+        .preview-area {
+            background: #f8fafc;
+            border-radius: 24px;
+            border: 1px solid #e2e8f0;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 500px;
+        }
+        .preview-area canvas {
+            max-width: 100%;
+            max-height: 70vh;
+            border-radius: 16px;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+            background: #ffffff;
+            display: block;
+            object-fit: contain;
+        }
+        .placeholder {
+            color: #94a3b8;
+            font-size: 1rem;
+            padding: 40px 20px;
+            text-align: center;
+        }
+        .placeholder strong {
+            display: block;
+            font-size: 1.2rem;
+            color: #475569;
+            margin-bottom: 8px;
+        }
+
+        /* Status */
+        .status {
+            margin-top: 12px;
+            font-size: 0.85rem;
+            color: #475569;
+            background: #f1f5f9;
+            padding: 8px 14px;
+            border-radius: 30px;
+            text-align: center;
+            width: 100%;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        /* Ajustes para el input de posición personalizada */
+        .pos-fields {
+            display: flex;
+            gap: 10px;
+            margin-top: 6px;
+        }
+        .pos-fields div {
+            flex: 1;
+        }
+        .pos-fields label {
+            font-size: 0.75rem;
+            color: #64748b;
+            margin-bottom: 2px;
+        }
+        .pos-fields input {
+            width: 100%;
+            padding: 6px 8px;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 0.85rem;
+        }
+
+        .inline-flex {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .inline-flex label {
+            margin-bottom: 0;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="app">
+        <h1>
+            🖼️ Marca de Agua
+            <small>configura y descarga</small>
+        </h1>
+
+        <div class="grid">
+            <!-- Panel de controles -->
+            <div class="controls">
+                <!-- Carga de imagen principal -->
+                <div class="control-group">
+                    <label>📸 Imagen base</label>
+                    <div class="file-input">
+                        <input type="file" id="baseImageInput" accept="image/*" />
+                    </div>
+                    <div class="hint">JPG, PNG, WEBP</div>
+                </div>
+
+                <!-- Tipo de marca: imagen o texto -->
+                <div class="control-group">
+                    <label>Tipo de marca</label>
+                    <div class="radio-group" id="watermarkTypeGroup">
+                        <label><input type="radio" name="wmType" value="image" checked /> Imagen</label>
+                        <label><input type="radio" name="wmType" value="text" /> Texto</label>
+                    </div>
+                </div>
+
+                <!-- Carga de marca (imagen) -->
+                <div class="control-group" id="imageWmGroup">
+                    <label>🖌️ Marca de agua (imagen)</label>
+                    <div class="file-input">
+                        <input type="file" id="watermarkImageInput" accept="image/*" />
+                    </div>
+                    <div class="hint">Recomendado: PNG con transparencia</div>
+                </div>
+
+                <!-- Marca de texto -->
+                <div class="control-group hidden" id="textWmGroup">
+                    <label>✏️ Texto de marca</label>
+                    <input type="text" id="watermarkText" value="© Mi Marca" placeholder="Escribe tu texto..." />
+                    <div class="flex-row" style="margin-top:8px;">
+                        <div style="flex:1;">
+                            <label style="font-size:0.75rem; color:#64748b;">Fuente</label>
+                            <select id="fontFamily">
+                                <option value="Arial">Arial</option>
+                                <option value="Georgia">Georgia</option>
+                                <option value="'Courier New'">Courier New</option>
+                                <option value="'Times New Roman'">Times New Roman</option>
+                                <option value="Verdana">Verdana</option>
+                                <option value="'Segoe UI'">Segoe UI</option>
+                            </select>
+                        </div>
+                        <div style="flex:1;">
+                            <label style="font-size:0.75rem; color:#64748b;">Color</label>
+                            <input type="color" id="textColor" value="#ffffff" />
+                        </div>
+                    </div>
+                    <div class="range-with-value" style="margin-top:6px;">
+                        <label style="font-size:0.75rem; color:#64748b; min-width:50px;">Tamaño</label>
+                        <input type="range" id="textSize" min="12" max="120" value="48" />
+                        <span class="value" id="textSizeValue">48</span>
+                    </div>
+                </div>
+
+                <!-- Configuraciones comunes -->
+                <div class="control-group">
+                    <label>📍 Posición</label>
+                    <select id="positionSelect">
+                        <option value="top-left">Superior izquierda</option>
+                        <option value="top-right">Superior derecha</option>
+                        <option value="center" selected>Centro</option>
+                        <option value="bottom-left">Inferior izquierda</option>
+                        <option value="bottom-right">Inferior derecha</option>
+                        <option value="custom">Personalizada</option>
+                    </select>
+                    <div class="pos-fields hidden" id="customPosFields">
+                        <div>
+                            <label>X (%)</label>
+                            <input type="number" id="posX" value="50" min="0" max="100" step="0.5" />
+                        </div>
+                        <div>
+                            <label>Y (%)</label>
+                            <input type="number" id="posY" value="50" min="0" max="100" step="0.5" />
+                        </div>
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <label>🔍 Escala</label>
+                    <div class="range-with-value">
+                        <input type="range" id="scaleRange" min="0.05" max="2.0" step="0.01" value="0.3" />
+                        <span class="value" id="scaleValue">0.30</span>
+                    </div>
+                    <div class="hint">1.0 = tamaño original de la marca</div>
+                </div>
+
+                <div class="control-group">
+                    <label>🌀 Rotación (°)</label>
+                    <div class="range-with-value">
+                        <input type="range" id="rotationRange" min="-180" max="180" step="1" value="0" />
+                        <span class="value" id="rotationValue">0</span>
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <label>☁️ Opacidad</label>
+                    <div class="range-with-value">
+                        <input type="range" id="opacityRange" min="0.05" max="1.0" step="0.01" value="0.6" />
+                        <span class="value" id="opacityValue">0.60</span>
+                    </div>
+                </div>
+
+                <!-- Botones de acción -->
+                <div class="control-group" style="margin-bottom:0;">
+                    <div class="flex-row">
+                        <button class="btn" id="applyBtn">🔄 Aplicar</button>
+                        <button class="btn btn-success" id="downloadBtn">⬇️ Descargar</button>
+                    </div>
+                    <div class="flex-row" style="margin-top:8px;">
+                        <button class="btn btn-secondary" id="resetBtn">↺ Restablecer</button>
+                    </div>
+                </div>
+
+                <div class="status" id="statusMessage">Listo</div>
+            </div>
+
+            <!-- Área de previsualización -->
+            <div class="preview-area">
+                <canvas id="previewCanvas"></canvas>
+                <div class="placeholder" id="placeholder">
+                    <strong>📤 Carga una imagen</strong>
+                    <span>Sube una foto y una marca para comenzar</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        (function() {
+            'use strict';
+
+            // ----- DOM references -----
+            const canvas = document.getElementById('previewCanvas');
+            const ctx = canvas.getContext('2d');
+            const placeholder = document.getElementById('placeholder');
+
+            const baseInput = document.getElementById('baseImageInput');
+            const wmImageInput = document.getElementById('watermarkImageInput');
+            const wmTextInput = document.getElementById('watermarkText');
+
+            const wmTypeRadios = document.querySelectorAll('input[name="wmType"]');
+            const imageWmGroup = document.getElementById('imageWmGroup');
+            const textWmGroup = document.getElementById('textWmGroup');
+
+            const positionSelect = document.getElementById('positionSelect');
+            const customPosFields = document.getElementById('customPosFields');
+            const posXInput = document.getElementById('posX');
+            const posYInput = document.getElementById('posY');
+
+            const scaleRange = document.getElementById('scaleRange');
+            const scaleValue = document.getElementById('scaleValue');
+            const rotationRange = document.getElementById('rotationRange');
+            const rotationValue = document.getElementById('rotationValue');
+            const opacityRange = document.getElementById('opacityRange');
+            const opacityValue = document.getElementById('opacityValue');
+
+            const fontFamily = document.getElementById('fontFamily');
+            const textColor = document.getElementById('textColor');
+            const textSize = document.getElementById('textSize');
+            const textSizeValue = document.getElementById('textSizeValue');
+
+            const applyBtn = document.getElementById('applyBtn');
+            const downloadBtn = document.getElementById('downloadBtn');
+            const resetBtn = document.getElementById('resetBtn');
+            const status = document.getElementById('statusMessage');
+
+            // ----- Estado -----
+            let baseImage = null; // HTMLImageElement
+            let watermarkImage = null; // HTMLImageElement
+            let watermarkText = '© Mi Marca';
+            let wmType = 'image'; // 'image' | 'text'
+
+            // Configuración por defecto
+            const defaults = {
+                position: 'center',
+                posX: 50,
+                posY: 50,
+                scale: 0.3,
+                rotation: 0,
+                opacity: 0.6,
+                fontFamily: 'Arial',
+                textColor: '#ffffff',
+                textSize: 48,
+                text: '© Mi Marca'
+            };
+
+            let config = { ...defaults };
+
+            // ----- Funciones auxiliares -----
+            function setStatus(msg, isError = false) {
+                status.textContent = msg;
+                status.style.color = isError ? '#b91c1c' : '#475569';
+                status.style.background = isError ? '#fee2e2' : '#f1f5f9';
+            }
+
+            function showPlaceholder(show) {
+                placeholder.style.display = show ? 'block' : 'none';
+                canvas.style.display = show ? 'none' : 'block';
+            }
+
+            // Cargar imagen desde File
+            function loadImageFromFile(file) {
+                return new Promise((resolve, reject) => {
+                    if (!file) reject(new Error('No file'));
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        const img = new Image();
+                        img.onload = () => resolve(img);
+                        img.onerror = () => reject(new Error('Error al decodificar imagen'));
+                        img.src = e.target.result;
+                    };
+                    reader.onerror = () => reject(new Error('Error al leer archivo'));
+                    reader.readAsDataURL(file);
+                });
+            }
+
+            // Dibujar en canvas
+            function render() {
+                if (!baseImage) {
+                    showPlaceholder(true);
+                    return;
+                }
+                showPlaceholder(false);
+
+                // Tamaño del canvas = tamaño de la imagen base
+                canvas.width = baseImage.width;
+                canvas.height = baseImage.height;
+
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+                // Dibujar imagen base
+                ctx.drawImage(baseImage, 0, 0);
+
+                // Aplicar opacidad global
+                ctx.globalAlpha = config.opacity;
+
+                // Guardar contexto para transformaciones
+                ctx.save();
+
+                // Si es imagen y no está cargada, salir (pero dibujamos solo base)
+                if (wmType === 'image' && !watermarkImage) {
+                    ctx.restore();
+                    ctx.globalAlpha = 1.0;
+                    setStatus('Marca de imagen no cargada', true);
+                    return;
+                }
+
+                // Determinar elemento a dibujar (imagen o texto)
+                let drawable = null;
+                let isText = false;
+                if (wmType === 'image' && watermarkImage) {
+                    drawable = watermarkImage;
+                } else if (wmType === 'text') {
+                    isText = true;
+                    // El texto se dibujará con las propiedades de config
+                } else {
+                    ctx.restore();
+                    ctx.globalAlpha = 1.0;
+                    setStatus('Marca no disponible', true);
+                    return;
+                }
+
+                // Calcular dimensiones de la marca (para imagen o texto)
+                let markWidth, markHeight;
+                if (isText) {
+                    // Estimación del tamaño del texto
+                    ctx.font = `${config.textSize}px "${config.fontFamily}"`;
+                    const metrics = ctx.measureText(watermarkText);
+                    markWidth = metrics.width;
+                    markHeight = config.textSize * 1.2; // altura aproximada
+                } else {
+                    markWidth = drawable.width;
+                    markHeight = drawable.height;
+                }
+
+                // Escala
+                const scale = config.scale;
+                const finalWidth = markWidth * scale;
+                const finalHeight = markHeight * scale;
+
+                // Posición (coordenadas del centro de la marca)
+                let cx, cy;
+                const pos = config.position;
+                const padX = 30;
+                const padY = 30;
+                const baseW = canvas.width;
+                const baseH = canvas.height;
+
+                if (pos === 'custom') {
+                    cx = (config.posX / 100) * baseW;
+                    cy = (config.posY / 100) * baseH;
+                } else {
+                    switch (pos) {
+                        case 'top-left':
+                            cx = padX + finalWidth / 2;
+                            cy = padY + finalHeight / 2;
+                            break;
+                        case 'top-right':
+                            cx = baseW - padX - finalWidth / 2;
+                            cy = padY + finalHeight / 2;
+                            break;
+                        case 'bottom-left':
+                            cx = padX + finalWidth / 2;
+                            cy = baseH - padY - finalHeight / 2;
+                            break;
+                        case 'bottom-right':
+                            cx = baseW - padX - finalWidth / 2;
+                            cy = baseH - padY - finalHeight / 2;
+                            break;
+                        case 'center':
+                        default:
+                            cx = baseW / 2;
+                            cy = baseH / 2;
+                            break;
+                    }
+                }
+
+                // Aplicar transformaciones: traslación al centro, rotación, escalado
+                ctx.translate(cx, cy);
+                ctx.rotate((config.rotation * Math.PI) / 180);
+                // Escalar para dibujar con las dimensiones finales
+                // Si es imagen, usamos drawImage con width/height
+                // Si es texto, el tamaño se aplica en font y luego escalamos? Mejor no escalar el texto con transform, usamos font size directamente.
+                // Para texto: no aplicamos escala mediante transform, ya que el tamaño se define por font. Pero la rotación y posición sí.
+                // Para imagen: escalamos con drawImage.
+
+                if (isText) {
+                    // Dibujar texto
+                    ctx.font = `${config.textSize}px "${config.fontFamily}"`;
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillStyle = config.textColor;
+                    ctx.shadowColor = 'rgba(0,0,0,0.5)';
+                    ctx.shadowBlur = 8;
+                    ctx.fillText(watermarkText, 0, 0);
+                    ctx.shadowBlur = 0;
+                } else {
+                    // Dibujar imagen escalada
+                    // drawImage(image, dx, dy, dw, dh) con centro en (0,0) después de translate
+                    ctx.drawImage(drawable, -finalWidth / 2, -finalHeight / 2, finalWidth, finalHeight);
+                }
+
+                ctx.restore();
+                ctx.globalAlpha = 1.0;
+                setStatus('✅ Marca aplicada correctamente');
+            }
+
+            // Cargar imagen base
+            async function loadBaseImage(file) {
+                try {
+                    const img = await loadImageFromFile(file);
+                    baseImage = img;
+                    render();
+                    setStatus('Imagen base cargada');
+                } catch (err) {
+                    setStatus('Error al cargar imagen base: ' + err.message, true);
+                }
+            }
+
+            // Cargar marca de imagen
+            async function loadWatermarkImage(file) {
+                try {
+                    const img = await loadImageFromFile(file);
+                    watermarkImage = img;
+                    if (wmType === 'image') {
+                        render();
+                        setStatus('Marca de imagen cargada');
+                    } else {
+                        setStatus('Marca de imagen cargada (cambia a tipo imagen para usarla)');
+                    }
+                } catch (err) {
+                    setStatus('Error al cargar marca de imagen: ' + err.message, true);
+                }
+            }
+
+            // ----- Event listeners -----
+
+            // Carga de imagen base
+            baseInput.addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                if (file) loadBaseImage(file);
+            });
+
+            // Carga de marca de imagen
+            wmImageInput.addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                if (file) loadWatermarkImage(file);
+            });
+
+            // Cambio de tipo de marca
+            wmTypeRadios.forEach(radio => {
+                radio.addEventListener('change', (e) => {
+                    if (e.target.checked) {
+                        wmType = e.target.value;
+                        if (wmType === 'image') {
+                            imageWmGroup.classList.remove('hidden');
+                            textWmGroup.classList.add('hidden');
+                            // Si no hay imagen de marca cargada, mostrar mensaje
+                            if (!watermarkImage) {
+                                setStatus('Selecciona una imagen de marca', true);
+                            } else {
+                                render();
+                            }
+                        } else {
+                            imageWmGroup.classList.add('hidden');
+                            textWmGroup.classList.remove('hidden');
+                            watermarkText = wmTextInput.value || '© Mi Marca';
+                            render();
+                        }
+                    }
+                });
+            });
+
+            // Posición
+            positionSelect.addEventListener('change', (e) => {
+                config.position = e.target.value;
+                if (config.position === 'custom') {
+                    customPosFields.classList.remove('hidden');
+                } else {
+                    customPosFields.classList.add('hidden');
+                }
+                render();
+            });
+
+            posXInput.addEventListener('input', (e) => {
+                config.posX = parseFloat(e.target.value) || 0;
+                if (config.position === 'custom') render();
+            });
+            posYInput.addEventListener('input', (e) => {
+                config.posY = parseFloat(e.target.value) || 0;
+                if (config.position === 'custom') render();
+            });
+
+            // Escala
+            scaleRange.addEventListener('input', (e) => {
+                const val = parseFloat(e.target.value);
+                scaleValue.textContent = val.toFixed(2);
+                config.scale = val;
+                render();
+            });
+
+            // Rotación
+            rotationRange.addEventListener('input', (e) => {
+                const val = parseFloat(e.target.value);
+                rotationValue.textContent = val;
+                config.rotation = val;
+                render();
+            });
+
+            // Opacidad
+            opacityRange.addEventListener('input', (e) => {
+                const val = parseFloat(e.target.value);
+                opacityValue.textContent = val.toFixed(2);
+                config.opacity = val;
+                render();
+            });
+
+            // Texto marca
+            wmTextInput.addEventListener('input', (e) => {
+                watermarkText = e.target.value || ' ';
+                if (wmType === 'text') render();
+            });
+
+            fontFamily.addEventListener('change', (e) => {
+                config.fontFamily = e.target.value;
+                if (wmType === 'text') render();
+            });
+
+            textColor.addEventListener('input', (e) => {
+                config.textColor = e.target.value;
+                if (wmType === 'text') render();
+            });
+
+            textSize.addEventListener('input', (e) => {
+                const val = parseInt(e.target.value, 10);
+                textSizeValue.textContent = val;
+                config.textSize = val;
+                if (wmType === 'text') render();
+            });
+
+            // Botón Aplicar (ya se actualiza en tiempo real, pero por si acaso)
+            applyBtn.addEventListener('click', () => {
+                render();
+                setStatus('Aplicado manualmente');
+            });
+
+            // Botón Descargar
+            downloadBtn.addEventListener('click', () => {
+                if (!baseImage) {
+                    setStatus('Primero carga una imagen base', true);
+                    return;
+                }
+                const link = document.createElement('a');
+                link.download = 'imagen_con_marca.png';
+                link.href = canvas.toDataURL('image/png');
+                link.click();
+                setStatus('Descargando...');
+            });
+
+            // Botón Restablecer
+            resetBtn.addEventListener('click', () => {
+                // Restablecer configuración a defaults
+                config = { ...defaults };
+                // Sincronizar controles
+                positionSelect.value = config.position;
+                if (config.position === 'custom') {
+                    customPosFields.classList.remove('hidden');
+                } else {
+                    customPosFields.classList.add('hidden');
+                }
+                posXInput.value = config.posX;
+                posYInput.value = config.posY;
+                scaleRange.value = config.scale;
+                scaleValue.textContent = config.scale.toFixed(2);
+                rotationRange.value = config.rotation;
+                rotationValue.textContent = config.rotation;
+                opacityRange.value = config.opacity;
+                opacityValue.textContent = config.opacity.toFixed(2);
+                fontFamily.value = config.fontFamily;
+                textColor.value = config.textColor;
+                textSize.value = config.textSize;
+                textSizeValue.textContent = config.textSize;
+                wmTextInput.value = config.text;
+                watermarkText = config.text;
+                // Tipo de marca: mantener el actual, pero si es texto, actualizar
+                if (wmType === 'text') {
+                    render();
+                } else {
+                    render();
+                }
+                setStatus('Restablecido a valores predeterminados');
+            });
+
+            // Inicializar
+            showPlaceholder(true);
+            setStatus('Carga una imagen para comenzar');
+
+            // Drag and drop básico (opcional) - no implementado para mantener simplicidad
+
+            // También actualizar si se cambia algo en el tipo de marca inicial
+            // Forzar sincronización inicial
+            const checkedRadio = document.querySelector('input[name="wmType"]:checked');
+            if (checkedRadio) {
+                wmType = checkedRadio.value;
+                if (wmType === 'image') {
+                    imageWmGroup.classList.remove('hidden');
+                    textWmGroup.classList.add('hidden');
+                } else {
+                    imageWmGroup.classList.add('hidden');
+                    textWmGroup.classList.remove('hidden');
+                }
+            }
+
+            // Si se carga imagen base, y hay marca de agua cargada, renderizar
+            // También permitir arrastrar y soltar en el canvas? no por ahora.
+
+            console.log('Aplicación lista');
+        })();
+    </script>
+</body>
+</html>
