@@ -45,7 +45,7 @@
         }
         .grid {
             display: grid;
-            grid-template-columns: 340px 1fr;
+            grid-template-columns: 360px 1fr;
             gap: 30px;
         }
         @media (max-width: 900px) {
@@ -60,7 +60,7 @@
             border-radius: 24px;
             padding: 22px 20px;
             border: 1px solid #e2e8f0;
-            max-height: 780px;
+            max-height: 820px;
             overflow-y: auto;
         }
         .controls::-webkit-scrollbar {
@@ -292,6 +292,28 @@
         .inline-flex label {
             margin-bottom: 0;
         }
+
+        /* para la opción de quitar fondo */
+        .bg-options {
+            margin-top: 10px;
+            border-top: 1px solid #e2e8f0;
+            padding-top: 12px;
+        }
+        .bg-options label {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-weight: 500;
+            cursor: pointer;
+        }
+        .bg-options label input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            accent-color: #3b82f6;
+        }
+        .bg-options .sub-control {
+            margin-top: 8px;
+        }
     </style>
 </head>
 <body>
@@ -330,6 +352,23 @@
                         <input type="file" id="watermarkImageInput" accept="image/*" />
                     </div>
                     <div class="hint">Recomendado: PNG con transparencia</div>
+
+                    <!-- Opción de quitar fondo -->
+                    <div class="bg-options">
+                        <label>
+                            <input type="checkbox" id="removeBgCheck" /> Quitar fondo
+                        </label>
+                        <div id="bgRemovalOptions" class="hidden sub-control">
+                            <label style="font-size:0.75rem; color:#64748b;">Color a eliminar</label>
+                            <input type="color" id="bgColor" value="#ffffff" />
+                            <div class="range-with-value" style="margin-top:4px;">
+                                <label style="font-size:0.75rem; color:#64748b; min-width:50px;">Tolerancia</label>
+                                <input type="range" id="bgTolerance" min="0" max="100" value="30" />
+                                <span class="value" id="bgToleranceValue">30</span>
+                            </div>
+                            <div class="hint">Ajusta la sensibilidad para eliminar colores similares</div>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Marca de texto -->
@@ -472,9 +511,17 @@
             const resetBtn = document.getElementById('resetBtn');
             const status = document.getElementById('statusMessage');
 
+            // ----- Controles de quitar fondo -----
+            const removeBgCheck = document.getElementById('removeBgCheck');
+            const bgRemovalOptions = document.getElementById('bgRemovalOptions');
+            const bgColorInput = document.getElementById('bgColor');
+            const bgToleranceInput = document.getElementById('bgTolerance');
+            const bgToleranceValue = document.getElementById('bgToleranceValue');
+
             // ----- Estado -----
             let baseImage = null; // HTMLImageElement
-            let watermarkImage = null; // HTMLImageElement
+            let watermarkImage = null; // HTMLImageElement original
+            let watermarkImageProcessed = null; // HTMLImageElement o null (si se procesa)
             let watermarkText = '© Mi Marca';
             let wmType = 'image'; // 'image' | 'text'
 
@@ -522,7 +569,103 @@
                 });
             }
 
-            // Dibujar en canvas
+            // ----- Función para quitar fondo -----
+            function removeBackgroundFromImage(img, colorHex, tolerance) {
+                return new Promise((resolve) => {
+                    // Crear un canvas temporal para procesar la imagen
+                    const tempCanvas = document.createElement('canvas');
+                    tempCanvas.width = img.width;
+                    tempCanvas.height = img.height;
+                    const tempCtx = tempCanvas.getContext('2d');
+                    tempCtx.drawImage(img, 0, 0);
+                    const imageData = tempCtx.getImageData(0, 0, img.width, img.height);
+                    const data = imageData.data;
+
+                    // Convertir color hex a RGB
+                    const hex = colorHex.replace('#', '');
+                    const r = parseInt(hex.substring(0, 2), 16);
+                    const g = parseInt(hex.substring(2, 4), 16);
+                    const b = parseInt(hex.substring(4, 6), 16);
+                    const tol = tolerance / 100 * 255; // tolerancia en escala 0-255
+
+                    // Recorrer píxeles
+                    for (let i = 0; i < data.length; i += 4) {
+                        const pr = data[i];
+                        const pg = data[i + 1];
+                        const pb = data[i + 2];
+                        // Distancia euclidiana
+                        const dist = Math.sqrt((pr - r) ** 2 + (pg - g) ** 2 + (pb - b) ** 2);
+                        if (dist <= tol) {
+                            data[i + 3] = 0; // hacer transparente
+                        }
+                    }
+
+                    tempCtx.putImageData(imageData, 0, 0);
+                    // Crear una nueva imagen con el resultado
+                    const resultImg = new Image();
+                    resultImg.onload = () => resolve(resultImg);
+                    resultImg.onerror = () => resolve(img); // fallback: devolver original
+                    resultImg.src = tempCanvas.toDataURL('image/png');
+                });
+            }
+
+            // Procesar la marca de agua según la opción de quitar fondo
+            async function processWatermarkImage() {
+                if (!watermarkImage) {
+                    watermarkImageProcessed = null;
+                    return;
+                }
+                if (removeBgCheck.checked) {
+                    try {
+                        const color = bgColorInput.value;
+                        const tolerance = parseFloat(bgToleranceInput.value) || 0;
+                        const processed = await removeBackgroundFromImage(watermarkImage, color, tolerance);
+                        watermarkImageProcessed = processed;
+                        setStatus('Fondo eliminado de la marca');
+                    } catch (e) {
+                        setStatus('Error al procesar fondo: ' + e.message, true);
+                        watermarkImageProcessed = watermarkImage;
+                    }
+                } else {
+                    watermarkImageProcessed = watermarkImage;
+                }
+                // Si el tipo de marca es imagen, renderizar
+                if (wmType === 'image') {
+                    render();
+                }
+            }
+
+            // ----- Carga de imagen base -----
+            async function loadBaseImage(file) {
+                try {
+                    const img = await loadImageFromFile(file);
+                    baseImage = img;
+                    render();
+                    setStatus('Imagen base cargada');
+                } catch (err) {
+                    setStatus('Error al cargar imagen base: ' + err.message, true);
+                }
+            }
+
+            // ----- Carga de marca de imagen -----
+            async function loadWatermarkImage(file) {
+                try {
+                    const img = await loadImageFromFile(file);
+                    watermarkImage = img;
+                    // Procesar según opción de quitar fondo
+                    await processWatermarkImage();
+                    if (wmType === 'image') {
+                        render();
+                        setStatus('Marca de imagen cargada');
+                    } else {
+                        setStatus('Marca de imagen cargada (cambia a tipo imagen para usarla)');
+                    }
+                } catch (err) {
+                    setStatus('Error al cargar marca de imagen: ' + err.message, true);
+                }
+            }
+
+            // ----- Renderizado principal -----
             function render() {
                 if (!baseImage) {
                     showPlaceholder(true);
@@ -535,58 +678,51 @@
                 canvas.height = baseImage.height;
 
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-                // Dibujar imagen base
                 ctx.drawImage(baseImage, 0, 0);
 
                 // Aplicar opacidad global
                 ctx.globalAlpha = config.opacity;
 
-                // Guardar contexto para transformaciones
                 ctx.save();
 
-                // Si es imagen y no está cargada, salir (pero dibujamos solo base)
-                if (wmType === 'image' && !watermarkImage) {
-                    ctx.restore();
-                    ctx.globalAlpha = 1.0;
-                    setStatus('Marca de imagen no cargada', true);
-                    return;
-                }
-
-                // Determinar elemento a dibujar (imagen o texto)
+                // Determinar elemento a dibujar
                 let drawable = null;
                 let isText = false;
-                if (wmType === 'image' && watermarkImage) {
-                    drawable = watermarkImage;
+
+                if (wmType === 'image') {
+                    // Usar la imagen procesada si existe, sino la original
+                    drawable = watermarkImageProcessed || watermarkImage;
+                    if (!drawable) {
+                        ctx.restore();
+                        ctx.globalAlpha = 1.0;
+                        setStatus('Marca de imagen no cargada', true);
+                        return;
+                    }
                 } else if (wmType === 'text') {
                     isText = true;
-                    // El texto se dibujará con las propiedades de config
                 } else {
                     ctx.restore();
                     ctx.globalAlpha = 1.0;
-                    setStatus('Marca no disponible', true);
+                    setStatus('Tipo de marca no válido', true);
                     return;
                 }
 
-                // Calcular dimensiones de la marca (para imagen o texto)
+                // Calcular dimensiones
                 let markWidth, markHeight;
                 if (isText) {
-                    // Estimación del tamaño del texto
                     ctx.font = `${config.textSize}px "${config.fontFamily}"`;
                     const metrics = ctx.measureText(watermarkText);
                     markWidth = metrics.width;
-                    markHeight = config.textSize * 1.2; // altura aproximada
+                    markHeight = config.textSize * 1.2;
                 } else {
                     markWidth = drawable.width;
                     markHeight = drawable.height;
                 }
 
-                // Escala
                 const scale = config.scale;
                 const finalWidth = markWidth * scale;
                 const finalHeight = markHeight * scale;
 
-                // Posición (coordenadas del centro de la marca)
                 let cx, cy;
                 const pos = config.position;
                 const padX = 30;
@@ -623,17 +759,10 @@
                     }
                 }
 
-                // Aplicar transformaciones: traslación al centro, rotación, escalado
                 ctx.translate(cx, cy);
                 ctx.rotate((config.rotation * Math.PI) / 180);
-                // Escalar para dibujar con las dimensiones finales
-                // Si es imagen, usamos drawImage con width/height
-                // Si es texto, el tamaño se aplica en font y luego escalamos? Mejor no escalar el texto con transform, usamos font size directamente.
-                // Para texto: no aplicamos escala mediante transform, ya que el tamaño se define por font. Pero la rotación y posición sí.
-                // Para imagen: escalamos con drawImage.
 
                 if (isText) {
-                    // Dibujar texto
                     ctx.font = `${config.textSize}px "${config.fontFamily}"`;
                     ctx.textAlign = 'center';
                     ctx.textBaseline = 'middle';
@@ -643,42 +772,12 @@
                     ctx.fillText(watermarkText, 0, 0);
                     ctx.shadowBlur = 0;
                 } else {
-                    // Dibujar imagen escalada
-                    // drawImage(image, dx, dy, dw, dh) con centro en (0,0) después de translate
                     ctx.drawImage(drawable, -finalWidth / 2, -finalHeight / 2, finalWidth, finalHeight);
                 }
 
                 ctx.restore();
                 ctx.globalAlpha = 1.0;
                 setStatus('✅ Marca aplicada correctamente');
-            }
-
-            // Cargar imagen base
-            async function loadBaseImage(file) {
-                try {
-                    const img = await loadImageFromFile(file);
-                    baseImage = img;
-                    render();
-                    setStatus('Imagen base cargada');
-                } catch (err) {
-                    setStatus('Error al cargar imagen base: ' + err.message, true);
-                }
-            }
-
-            // Cargar marca de imagen
-            async function loadWatermarkImage(file) {
-                try {
-                    const img = await loadImageFromFile(file);
-                    watermarkImage = img;
-                    if (wmType === 'image') {
-                        render();
-                        setStatus('Marca de imagen cargada');
-                    } else {
-                        setStatus('Marca de imagen cargada (cambia a tipo imagen para usarla)');
-                    }
-                } catch (err) {
-                    setStatus('Error al cargar marca de imagen: ' + err.message, true);
-                }
             }
 
             // ----- Event listeners -----
@@ -703,7 +802,6 @@
                         if (wmType === 'image') {
                             imageWmGroup.classList.remove('hidden');
                             textWmGroup.classList.add('hidden');
-                            // Si no hay imagen de marca cargada, mostrar mensaje
                             if (!watermarkImage) {
                                 setStatus('Selecciona una imagen de marca', true);
                             } else {
@@ -786,7 +884,36 @@
                 if (wmType === 'text') render();
             });
 
-            // Botón Aplicar (ya se actualiza en tiempo real, pero por si acaso)
+            // Quitar fondo: mostrar/ocultar opciones y procesar
+            removeBgCheck.addEventListener('change', async (e) => {
+                if (e.target.checked) {
+                    bgRemovalOptions.classList.remove('hidden');
+                } else {
+                    bgRemovalOptions.classList.add('hidden');
+                }
+                // Reprocesar la imagen de marca si existe
+                if (watermarkImage) {
+                    await processWatermarkImage();
+                } else {
+                    render();
+                }
+            });
+
+            bgColorInput.addEventListener('input', async () => {
+                if (removeBgCheck.checked && watermarkImage) {
+                    await processWatermarkImage();
+                }
+            });
+
+            bgToleranceInput.addEventListener('input', async (e) => {
+                const val = parseInt(e.target.value, 10);
+                bgToleranceValue.textContent = val;
+                if (removeBgCheck.checked && watermarkImage) {
+                    await processWatermarkImage();
+                }
+            });
+
+            // Botón Aplicar
             applyBtn.addEventListener('click', () => {
                 render();
                 setStatus('Aplicado manualmente');
@@ -807,9 +934,7 @@
 
             // Botón Restablecer
             resetBtn.addEventListener('click', () => {
-                // Restablecer configuración a defaults
                 config = { ...defaults };
-                // Sincronizar controles
                 positionSelect.value = config.position;
                 if (config.position === 'custom') {
                     customPosFields.classList.remove('hidden');
@@ -830,7 +955,14 @@
                 textSizeValue.textContent = config.textSize;
                 wmTextInput.value = config.text;
                 watermarkText = config.text;
-                // Tipo de marca: mantener el actual, pero si es texto, actualizar
+                // Reiniciar opciones de quitar fondo
+                removeBgCheck.checked = false;
+                bgRemovalOptions.classList.add('hidden');
+                bgColorInput.value = '#ffffff';
+                bgToleranceInput.value = 30;
+                bgToleranceValue.textContent = '30';
+                // Restaurar imagen procesada a la original
+                watermarkImageProcessed = watermarkImage; // si existe
                 if (wmType === 'text') {
                     render();
                 } else {
@@ -843,9 +975,6 @@
             showPlaceholder(true);
             setStatus('Carga una imagen para comenzar');
 
-            // Drag and drop básico (opcional) - no implementado para mantener simplicidad
-
-            // También actualizar si se cambia algo en el tipo de marca inicial
             // Forzar sincronización inicial
             const checkedRadio = document.querySelector('input[name="wmType"]:checked');
             if (checkedRadio) {
@@ -858,9 +987,6 @@
                     textWmGroup.classList.remove('hidden');
                 }
             }
-
-            // Si se carga imagen base, y hay marca de agua cargada, renderizar
-            // También permitir arrastrar y soltar en el canvas? no por ahora.
 
             console.log('Aplicación lista');
         })();
